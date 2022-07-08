@@ -131,5 +131,69 @@ mod tests {
                 commit: Some(0xabcd1234)
             })
         );
+        let bytes: [u8; 16] = SemVer::from_str("v0.9.8-760-gabcd1234").unwrap().into();
+        assert_eq!(
+            bytes,
+            [0, 0,
+            9, 0,
+            8, 0,
+            248, 2,
+            0x34, 0x12, 0xcd, 0xab,
+            0x01, 0, 0, 0
+            ]
+        );
+        let bytes: [u8; 16] = SemVer::from_str("v0.9.8-760").unwrap().into();
+        assert_eq!(
+            bytes,
+            [0, 0,
+            9, 0,
+            8, 0,
+            248, 2,
+            0, 0, 0, 0,
+            0x00, 0, 0, 0
+            ]
+        );
+        let bytes: [u8; 16] = SemVer::from_str("v0.9.8-gabcd1234").unwrap().into();
+        assert_eq!(
+            bytes,
+            [0, 0,
+            9, 0,
+            8, 0,
+            0, 0,
+            0x34, 0x12, 0xcd, 0xab,
+            0x01, 0, 0, 0
+            ]
+        );
+        let bytes: [u8; 16] = SemVer::from_str("v0.9.8").unwrap().into();
+        assert_eq!(
+            bytes,
+            [0, 0,
+            9, 0,
+            8, 0,
+            0, 0,
+            0, 0, 0, 0,
+            0x0, 0, 0, 0
+            ]
+        );
+        let bytes = [0, 0,
+        9, 0,
+        8, 0,
+        248, 2,
+        0x34, 0x12, 0xcd, 0xab,
+        0x01, 0, 0, 0
+        ];
+        assert_eq!(SemVer::from_str("v0.9.8-760-gabcd1234").unwrap(),
+            SemVer::from(bytes)
+        );
+        let bytes = [0, 0,
+        9, 0,
+        8, 0,
+        248, 2,
+        0x34, 0x12, 0xcd, 0xab, // these values should be ignored
+        0x00, 0, 0, 0
+        ];
+        assert_eq!(SemVer::from_str("v0.9.8-760").unwrap(),
+            SemVer::from(bytes)
+        );
     }
 }
