@@ -31,18 +31,22 @@ impl SemVer {
         SemVer::from_str(&semver)
     }
     pub fn from_str(revstr: &str) -> Result<Self, &'static str> {
-        let ver: Vec<&str> = revstr.strip_prefix('v')
+        let ver: Vec<&str> = revstr.trim_end().strip_prefix('v')
             .ok_or("semver does not start with 'v'!")?
             .split(['.', '-']).collect();
-        if ver.len() != 4 && ver.len() != 5 {
+        if ver.len() != 4 && ver.len() != 5 && ver.len() != 3 {
             return Err("semver string has wrong number of fields");
         }
         let extra = if ver.len() == 5 {
             u16::from_str_radix(ver[3], 10).map_err(|_| "error parsing extra")?
-        } else if ver[3].strip_prefix('g').is_some() { // must be a length-4 string due to the check above
-            0 // last string started with a 'g', it's a commit rev
-        } else { // interpret last string as extra, because no leading 'g'
-            u16::from_str_radix(ver[3], 10).map_err(|_| "error parsing extra")?
+        } else if ver.len() == 4 {
+            if ver[3].strip_prefix('g').is_some() {
+                0 // last string started with a 'g', it's a commit rev
+            } else { // interpret last string as extra, because no leading 'g'
+                u16::from_str_radix(ver[3], 10).map_err(|_| "error parsing extra")?
+            }
+        } else { // must be a length-3 string due to the check above
+            0
         };
         Ok(SemVer {
             maj: u16::from_str_radix(ver[0], 10).map_err(|_| "error parsing maj")?,
@@ -51,7 +55,7 @@ impl SemVer {
             extra,
             commit: if let Some(c) = ver[ver.len() - 1].strip_prefix('g') {
                 Some(
-                    u32::from_str_radix(c.trim_end(), 16)
+                    u32::from_str_radix(c, 16)
                     .map_err(|_| "error parsing commit")?
                 )
             } else {
@@ -91,7 +95,9 @@ mod tests {
     use super::*;
     #[test]
     fn test_gitver() {
-        assert!(SemVer::from_git().is_ok());
+        let gitver = SemVer::from_git();
+        println!("{:?}", gitver);
+        assert!(gitver.is_ok());
     }
     #[test]
     fn test_strver() {
