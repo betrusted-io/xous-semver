@@ -2,8 +2,9 @@
 use std::process::Command;
 #[cfg(feature="std")]
 use std::convert::{From, Into, TryInto};
+use std::cmp::Ordering;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Eq, Debug)]
 pub struct SemVer {
     pub maj: u16,
     pub min: u16,
@@ -89,7 +90,38 @@ impl Into::<[u8; 16]> for SemVer {
         ser
     }
 }
-
+impl Ord for SemVer {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // we can just concatenate all the fields together and do a numerical comparison.
+        // commits are extra metadata in the record, and have no meaning in a comparison
+        let mine: u64 =
+            (self.maj as u64) << 48
+            | (self.min as u64) << 32
+            | (self.rev as u64) << 16
+            | (self.extra as u64);
+        let theirs: u64 =
+            (other.maj as u64) << 48
+            | (other.min as u64) << 32
+            | (other.rev as u64) << 16
+            | (other.extra as u64);
+        mine.cmp(&theirs)
+    }
+}
+impl PartialOrd for SemVer {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialEq for SemVer {
+    // NOTE: equality also considers the commit rev
+    fn eq(&self, other: &Self) -> bool {
+        self.maj == other.maj
+        && self.min == other.min
+        && self.rev == other.rev
+        && self.extra == other.extra
+        && self.commit == other.commit
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -194,6 +226,30 @@ mod tests {
         ];
         assert_eq!(SemVer::from_str("v0.9.8-760").unwrap(),
             SemVer::from(bytes)
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() <
+            SemVer::from_str("v0.9.8-761-g0123456").unwrap()
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() <
+            SemVer::from_str("v0.9.9-2").unwrap()
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() <
+            SemVer::from_str("v1.0.0").unwrap()
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() !=
+            SemVer::from_str("v0.9.8-760").unwrap()
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() !=
+            SemVer::from_str("v0.9.8-760-g1234").unwrap()
+        );
+        assert!(
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() ==
+            SemVer::from_str("v0.9.8-760-gabcd1234").unwrap()
         );
     }
 }
