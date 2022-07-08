@@ -78,7 +78,32 @@ impl From::<[u8; 16]> for SemVer {
         }
     }
 }
+impl From::<&[u8; 16]> for SemVer {
+    fn from(bytes: &[u8; 16]) -> SemVer {
+        // we use a whole word to store the `Option` flag, just to keep alignment at word alignment.
+        let has_commit = u32::from_le_bytes(bytes[12..16].try_into().unwrap());
+        SemVer {
+            maj: u16::from_le_bytes(bytes[0..2].try_into().unwrap()),
+            min: u16::from_le_bytes(bytes[2..4].try_into().unwrap()),
+            rev: u16::from_le_bytes(bytes[4..6].try_into().unwrap()),
+            extra: u16::from_le_bytes(bytes[6..8].try_into().unwrap()),
+            commit: if has_commit != 0 {Some(u32::from_le_bytes(bytes[8..12].try_into().unwrap()))} else {None},
+        }
+    }
+}
 impl Into::<[u8; 16]> for SemVer {
+    fn into(self) -> [u8; 16] {
+        let mut ser = [0u8; 16];
+        ser[0..2].copy_from_slice(&self.maj.to_le_bytes());
+        ser[2..4].copy_from_slice(&self.min.to_le_bytes());
+        ser[4..6].copy_from_slice(&self.rev.to_le_bytes());
+        ser[6..8].copy_from_slice(&self.extra.to_le_bytes());
+        ser[8..12].copy_from_slice(&self.commit.unwrap_or(0).to_le_bytes());
+        ser[12..16].copy_from_slice(&(if self.commit.is_some() {1u32} else {0u32}).to_le_bytes());
+        ser
+    }
+}
+impl Into::<[u8; 16]> for &SemVer {
     fn into(self) -> [u8; 16] {
         let mut ser = [0u8; 16];
         ser[0..2].copy_from_slice(&self.maj.to_le_bytes());
@@ -250,6 +275,32 @@ mod tests {
         assert!(
             SemVer::from_str("v0.9.8-760-gabcd1234").unwrap() ==
             SemVer::from_str("v0.9.8-760-gabcd1234").unwrap()
+        );
+        let sv = Some(SemVer::from_str("v0.9.8-760-gabcd1234").unwrap());
+        let bytes: [u8; 16] = if let Some(svb) = &sv {
+            svb.into()
+        } else {
+            [0u8; 16]
+        };
+        assert_eq!(
+            bytes,
+            [0, 0,
+            9, 0,
+            8, 0,
+            248, 2,
+            0x34, 0x12, 0xcd, 0xab,
+            0x01, 0, 0, 0
+            ]
+        );
+        let bytes = [0, 0,
+        9, 0,
+        8, 0,
+        248, 2,
+        0x34, 0x12, 0xcd, 0xab, // these values should be ignored
+        0x00, 0, 0, 0
+        ];
+        assert_eq!(SemVer::from_str("v0.9.8-760").unwrap(),
+            SemVer::from(&bytes)
         );
     }
 }
