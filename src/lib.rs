@@ -31,6 +31,16 @@ impl SemVer {
         let semver = String::from_utf8_lossy(&gitver);
         SemVer::from_str(&semver)
     }
+    #[cfg(feature="std")]
+    pub fn to_string(&self) -> String {
+        if let Some(commit) = self.commit {
+            format!("v{}.{}.{}-{}-g{:x}",
+                self.maj, self.min, self.rev, self.extra, commit
+            )
+        } else {
+            format!("v{}.{}.{}-{}", self.maj, self.min, self.rev, self.extra)
+        }
+    }
     pub fn from_str(revstr: &str) -> Result<Self, &'static str> {
         let ver: Vec<&str> = revstr.trim_end().strip_prefix('v')
             .ok_or("semver does not start with 'v'!")?
@@ -301,6 +311,16 @@ mod tests {
         ];
         assert_eq!(SemVer::from_str("v0.9.8-760").unwrap(),
             SemVer::from(&bytes)
+        );
+        assert_eq!(SemVer {
+            maj: 0, min: 9, rev: 8, extra: 42, commit: None
+        }.to_string(),
+            "v0.9.8-42".to_string()
+        );
+        assert_eq!(SemVer {
+            maj: 0, min: 9, rev: 8, extra: 42, commit: Some(0x123abc)
+        }.to_string(),
+            "v0.9.8-42-g123abc".to_string()
         );
     }
 }
