@@ -65,10 +65,8 @@ impl SemVer {
             rev: u16::from_str_radix(ver[2], 10).map_err(|_| "error parsing rev")?,
             extra,
             commit: if let Some(c) = ver[ver.len() - 1].strip_prefix('g') {
-                Some(
-                    u32::from_str_radix(c, 16)
-                    .map_err(|_| "error parsing commit")?
-                )
+                let trunc = if c.len() > 8 { &c[..8] } else { c };
+                Some(u32::from_str_radix(trunc, 16).map_err(|_| "error parsing commit")?)
             } else {
                 None
             }
