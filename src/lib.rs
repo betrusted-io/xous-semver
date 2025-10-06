@@ -39,7 +39,7 @@ impl SemVer {
     #[cfg(feature = "std")]
     pub fn from_git() -> Result<Self, &'static str> {
         let output = std::process::Command::new("git")
-            .args(&["describe", "--tags"])
+            .args(&["describe"])
             .output()
             .map_err(|_| "failed to execute git")?;
 
