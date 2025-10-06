@@ -2,7 +2,7 @@
 authors = ["bunnie <bunnie@kosagi.com>"]
 description = "A utility for porting semantic versions between build system and binary objects"
 name = "xous-semver"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/betrusted-io/xous-semver/"
