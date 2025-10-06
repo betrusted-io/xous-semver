@@ -134,8 +134,20 @@ impl From<[u8; 16]> for SemVer {
 
 impl From<&[u8; 16]> for SemVer {
     #[inline]
-    fn from(value: &[u8; 16]) -> Self {
-        SemVer::from(*value)
+    fn from(bytes: &[u8; 16]) -> Self {
+        // we use a whole word to store the `Option` flag, just to keep alignment at word alignment.
+        let has_commit = u32::from_le_bytes(bytes[12..16].try_into().unwrap());
+        SemVer {
+            maj:    u16::from_le_bytes(bytes[0..2].try_into().unwrap()),
+            min:    u16::from_le_bytes(bytes[2..4].try_into().unwrap()),
+            rev:    u16::from_le_bytes(bytes[4..6].try_into().unwrap()),
+            extra:  u16::from_le_bytes(bytes[6..8].try_into().unwrap()),
+            commit: if has_commit != 0 {
+                Some(u32::from_le_bytes(bytes[8..12].try_into().unwrap()))
+            } else {
+                None
+            },
+        }
     }
 }
 
@@ -160,9 +172,22 @@ impl From<SemVer> for [u8; 16] {
 }
 
 impl From<&SemVer> for [u8; 16] {
-    #[inline]
     fn from(value: &SemVer) -> Self {
-        value.into()
+        let mut ser = [0u8; 16];
+        ser[0..2].copy_from_slice(&value.maj.to_le_bytes());
+        ser[2..4].copy_from_slice(&value.min.to_le_bytes());
+        ser[4..6].copy_from_slice(&value.rev.to_le_bytes());
+        ser[6..8].copy_from_slice(&value.extra.to_le_bytes());
+        ser[8..12].copy_from_slice(&value.commit.unwrap_or(0).to_le_bytes());
+        ser[12..16].copy_from_slice(
+            &(if value.commit.is_some() {
+                1u32
+            } else {
+                0u32
+            })
+            .to_le_bytes(),
+        );
+        ser
     }
 }
 
